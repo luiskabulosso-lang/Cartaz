@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Cartaz PRO</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+body {
+  margin: 0;
+  display: flex;
+  font-family: Arial;
+  background: #ddd;
+}
+
+.sidebar {
+  width: 270px;
+  background: #222;
+  color: white;
+  padding: 15px;
+  height: 100vh;
+}
+
+.sidebar input, .sidebar select {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.sidebar button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 6px;
+  background: #ffcc00;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#contadorBox {
+  background: #111;
+  padding: 10px;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#cartaz {
+  width: 794px;
+  height: 1123px;
+  background: white;
+  border: 5px solid black;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 10px;
+}
+
+.tipo {
+  background: red;
+  color: white;
+  font-family: 'Anton';
+  font-size: 50px;
+  text-align: center;
+}
+
+.loja, .produto, .footer {
+  text-align: center;
+}
+
+.loja { font-size: 30px; }
+.produto { font-size: 40px; font-weight: bold; }
+
+.preco-area {
+  background: yellow;
+  display: flex;
+  justify-content: center;
+}
+
+.preco {
+  font-family: 'Anton';
+  color: red;
+  display: flex;
+}
+
+.valor { font-size: 150px; }
+.centavos { font-size: 50px; }
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+  <h3>Cartaz PRO</h3>
+
+  <div id="contadorBox">
+    Cartazes: <span id="contador">0</span>
+  </div>
+
+  <select id="tipo">
+    <option>OFERTA</option>
+    <option>PROMOÇÃO</option>
+    <option>IMPERDÍVEL</option>
+    <option>LIQUIDAÇÃO</option>
+  </select>
+
+  <input id="lojaInput" placeholder="Nome da loja">
+  <input id="codigo" placeholder="Código">
+  <input id="produtoInput" placeholder="Produto">
+  <input id="precoInput" placeholder="Preço">
+  <input id="data" type="date">
+
+  <select id="tamanho">
+    <option value="A4">A4</option>
+    <option value="A5">A5 (2 por folha)</option>
+    <option value="A6">A6 (4 por folha)</option>
+  </select>
+
+  <button onclick="adicionarCartaz()">Adicionar</button>
+  <button onclick="gerarPDF()">Gerar PDF</button>
+  <button onclick="limpar()">Limpar</button>
+</div>
+
+<div class="main">
+  <div id="cartaz">
+    <div class="tipo" id="tipoTxt">OFERTA</div>
+    <div class="loja" id="lojaTxt">LOJA</div>
+    <div class="produto" id="produtoTxt">PRODUTO</div>
+
+    <div class="preco-area">
+      <div class="preco">
+        <div class="valor" id="valor">0</div>
+        <div class="centavos" id="centavos">,00</div>
+      </div>
+    </div>
+
+    <div class="footer" id="rodape">Validade</div>
+  </div>
+</div>
+
+<script>
+const produtosDB = {
+  "1632": { nome: "BANANA PRATA", preco: "2,90" },
+  "102": { nome: "FEIJÃO 1KG", preco: "7,49" },
+"420": { nome: "MACONHA 1KG", preco: "60,49" }
+};
+
+let listaCartazes = [];
+
+document.querySelectorAll("input, select").forEach(el => {
+  el.addEventListener("input", atualizar);
+});
+
+codigo.addEventListener("input", () => {
+  let cod = codigo.value;
+  for (let k in produtosDB) {
+    if (k.startsWith(cod)) {
+      produtoInput.value = produtosDB[k].nome;
+      precoInput.value = produtosDB[k].preco;
+    }
+  }
+  atualizar();
+});
+
+function atualizar() {
+  tipoTxt.innerText = tipo.value;
+  lojaTxt.innerText = lojaInput.value || "LOJA";
+  produtoTxt.innerText = produtoInput.value || "PRODUTO";
+
+  let p = (precoInput.value || "0,00").replace(".", ",").split(",");
+  valor.innerText = p[0];
+  centavos.innerText = "," + (p[1] || "00");
+
+  rodape.innerText = "Válido até: " + (data.value || "--/--");
+}
+
+function atualizarContador() {
+  contador.innerText = listaCartazes.length;
+}
+
+function adicionarCartaz() {
+  listaCartazes.push({
+    tipo: tipo.value,
+    loja: lojaInput.value,
+    produto: produtoInput.value,
+    preco: precoInput.value,
+    data: data.value
+  });
+  atualizarContador();
+}
+
+function criarCartaz(d) {
+  const clone = cartaz.cloneNode(true);
+
+  let p = (d.preco || "0,00").replace(".", ",").split(",");
+
+  clone.querySelector("#tipoTxt").innerText = d.tipo;
+  clone.querySelector("#lojaTxt").innerText = d.loja;
+  clone.querySelector("#produtoTxt").innerText = d.produto;
+  clone.querySelector("#valor").innerText = p[0];
+  clone.querySelector("#centavos").innerText = "," + (p[1] || "00");
+  clone.querySelector("#rodape").innerText = "Válido até: " + d.data;
+
+  clone.style.position = "absolute";
+  clone.style.left = "-9999px";
+
+  return clone;
+}
+
+async function gerarPDF() {
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF("p", "mm", "a4");
+
+  const tipoFolha = tamanho.value;
+
+  let posicoes = [];
+
+  if (tipoFolha === "A4")
+    posicoes = [{x:0,y:0,w:210,h:297}];
+
+  if (tipoFolha === "A5")
+    posicoes = [
+      {x:0,y:0,w:210,h:148},
+      {x:0,y:148,w:210,h:148}
+    ];
+
+  if (tipoFolha === "A6")
+    posicoes = [
+      {x:0,y:0,w:105,h:148},{x:105,y:0,w:105,h:148},
+      {x:0,y:148,w:105,h:148},{x:105,y:148,w:105,h:148}
+    ];
+
+  let i = 0;
+
+  while (i < listaCartazes.length) {
+
+    for (let p of posicoes) {
+
+      if (i >= listaCartazes.length) break;
+
+      const temp = criarCartaz(listaCartazes[i]);
+      document.body.appendChild(temp);
+
+      const canvas = await html2canvas(temp, {
+        scale: 3,
+        backgroundColor: "#fff"
+      });
+
+      const img = canvas.toDataURL("image/jpeg", 1.0);
+
+      pdf.addImage(img, "JPEG", p.x, p.y, p.w, p.h);
+
+      document.body.removeChild(temp);
+
+      i++;
+    }
+
+    if (i < listaCartazes.length)
+      pdf.addPage();
+  }
+
+  pdf.save("cartazes.pdf");
+}
+
+function limpar() {
+  listaCartazes = [];
+  atualizarContador();
+}
+
+atualizar();
+atualizarContador();
+</script>
+
+</body>
+</html>
